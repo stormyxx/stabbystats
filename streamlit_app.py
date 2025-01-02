@@ -1,6 +1,8 @@
+from collections import Counter
 from datetime import datetime, timedelta, date
 import pandas as pd
 import streamlit as st
+from plotly_calplot import calplot
 
 class StabbyStats:
 
@@ -11,13 +13,18 @@ class StabbyStats:
         return df
     
     def render_sidebar(self):
+        st.logo('moider.png', size='large', link='https://discord.gg/KqkMMaJBrb')
+        st.sidebar.markdown('**What is this?**')
+        st.sidebar.markdown("My colleague introduced me to Streamlit and I've been told that it lets me write pretty data visualisation dashboards quickly using python (my beloved programming language <3)")
         st.sidebar.markdown('**Useful Links**')
         st.sidebar.write('[FR Hub Thread](https://www1.flightrising.com/forums/forga/3208161)')
         st.sidebar.write('[Game History Sheet](https://docs.google.com/spreadsheets/d/15YT9N2TQ5HUJZONgnZBHJP1fYkA_8E6m8LT6kNG-bTU)')
+        st.sidebar.button('click me for balloons!!!', on_click=st.balloons, type='primary')
     
     def render_body(self):
         st.title("Flight Rising IMH Game Statistics")
         self.render_overview()
+        self.render_calplot()
 
     def render_overview(self):
         hcol1, hcol2 = st.columns(2)
@@ -36,6 +43,31 @@ class StabbyStats:
         col1.metric("Games Played", value=total_games, delta=f"{total_games-hist_total}")
         col2.metric('Town Win Rate', value=f"{round(town_wins*100/total_games, 2)}%", delta=f"{round((town_wins*100/total_games)-(hist_town_wins*100/hist_total), 2)}%")
         col3.metric('Mafia Win Rate', value=f"{round(maf_wins*100/total_games, 2)}%", delta=f"{round((maf_wins*100/total_games)-(hist_maf_wins*100/hist_total), 2)}%")
+
+    def render_calplot(self):
+        st.markdown('### Games Over Time')
+        game_hist = self.game_history.to_dict('records')
+        days = [day for game in game_hist for day in pd.date_range(start=game['Start Date'], end=game['End Date'], freq='D')]
+        date_range = pd.date_range(start=min(days), end=max(days), freq='D')
+        counter = Counter(days)
+        calplot_df = pd.DataFrame({'count': [counter[day] for day in date_range], 'date': date_range})
+        calplot_df['date'] = calplot_df['date'].dt.date
+        plt = calplot(calplot_df, x='date', y='count', name='Ongoing Games', month_lines=False, colorscale='greens')
+        st.plotly_chart(plt)
+
+    def render_winrate_trend(self):
+        game_hist = self.game_history.to_dict('records')
+        winrate_hist = []
+        games = {'Town': 0, 'Mafia': 0, '3P': 0}
+        wins = {'Town': 0, 'Mafia': 0, '3P': 0}
+        
+        for game in game_hist:
+            for faction in ['Town', 'Mafia', '3P']:
+                if faction in game['Alignments Present']:
+                    games[faction] += 1
+                if faction in game['Winning Faction']:
+                    wins[faction] += 1
+            winrate_hist.append({'Date': game['End Date'], 'Town Winrate': wins['Town']*100/games['Town'], 'Mafia Winrate': wins['Mafia']*100/games['Mafia'], '3P Winrate': wins['3P']*100/games['3P']})
 
     def render(self):
         self.game_history = self.load_data()
