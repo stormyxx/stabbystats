@@ -174,7 +174,12 @@ class StabbyStats:
                 hovertemplate="%{y}%"
             )
         )
-        fig.update_layout(hovermode="x unified", yaxis=dict(title=dict(text="Winrate (%)")))
+        fig.update_layout(
+            hovermode="x unified", 
+            yaxis=dict(title=dict(text="Winrate (%)")),
+            xaxis=dict(title=dict(text="Date")),
+            margin=dict(t=1)
+            )
         st.plotly_chart(fig)
 
     def render(self):
